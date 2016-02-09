@@ -6,16 +6,39 @@
 //  Copyright © 2016 User. All rights reserved.
 //
 
+#include <stdio.h>
+#include <string.h>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+using namespace std;
+
 
 class Node
 {
-public: Node* childNodes[26] = {NULL};
+    const static int MAXCHILDNODES = 26;
+    
+public: Node** childNodes = NULL;
 public: bool IsEOW;
     
 public: Node()
     {
         IsEOW = false;
+    }
+    
+public: int GetNodeCount()
+    {
+        return 1;
+    }
+    
+public: bool InitializeChildNodes()
+    {
+        childNodes = new Node*[26];
+        for(int i=0;i<MAXCHILDNODES;i++) {
+            childNodes[i] = NULL;
+        }
+        return true;
     }
 };
 
@@ -23,11 +46,17 @@ public: Node()
 class Trie
 {
     Node* RootNode;
+    int NodeCount = 1;
 public: Trie()
     {
         RootNode = new Node();
+        NodeCount += RootNode->GetNodeCount();
     }
     
+public: int GetNodeCount()
+    {
+        return NodeCount;
+    }
 public: bool Exists(char* newStr)
     {
         if (newStr == NULL)
@@ -52,7 +81,7 @@ public: bool Exists(char* newStr)
                 }
             }
             int index = *newStr - 'a';
-            if (index < 0 || index >= 26)
+            if (node->childNodes == NULL || index < 0 || index >= 26)
                 return false;
             
             return Exists(node->childNodes[*newStr - 'a'], newStr + 1);
@@ -84,9 +113,13 @@ public: bool Insert(char* newStr)
             return false;
         }
         
+        if (node->childNodes == NULL)
+            node->InitializeChildNodes();
+        
         if (node->childNodes[index] == NULL)
         {
             node->childNodes[index] = new Node();
+            NodeCount += node->childNodes[index]->GetNodeCount();
         }
         
         return Insert(node->childNodes[index], newStr + 1);
@@ -159,18 +192,50 @@ class DoubleArrayTrie
 
 int main(int argc, const char * argv[]) {
     // insert code here...
-    std::cout << "Hello, World!\nWhats up" << std::endl;
-    
+    long int count = 0;
+    long int notinserted = 0;
     Trie* myTrie = new Trie();
-    char mystring[] = "hello";
-    myTrie->Insert(mystring);
-    char mystring2[] = "hell";
-    myTrie->Insert(mystring2);
-    char mystring3[] = "what";
+    ifstream file;
+    file.open("words.txt");
+    for( std::string line; getline( file, line ); )
+    {
+        transform(line.begin(), line.end(), line.begin(), ::tolower);
+        
+        istringstream ifstream(line);
+        
+        string word;
+        while (getline(ifstream, word, ' '))
+        {
+            cout << word << endl;
+            char* wordToInsert = const_cast<char*>(word.c_str());
+            
+            bool didInsert = myTrie->Insert(wordToInsert);
+            if (didInsert)
+            {
+                count++;
+            }
+            else
+            {
+                notinserted++;
+            }
+        }
+    }
     
-    std::cout << myTrie->Exists(mystring) << std::endl;
-    std::cout << myTrie->Exists(mystring3) << std::endl;
+    cout << "Total number of words inserted : "  << count << endl;
+    cout << "Total number of words not inserted : "  <<   notinserted << endl;
+    cout << "Total number of nodes : " << myTrie->GetNodeCount() << endl;
+    cout << endl;
+
+    cout << "Please enter a string to check :" << endl;
     
+    string inputstr;
+    while (true)
+    {
+        getline(cin, inputstr);
+        if (inputstr.length() == 0)
+            break;
+        cout << myTrie->Exists(const_cast<char*>(inputstr.c_str())) << endl;
+    }
     
     return 0;
 }
